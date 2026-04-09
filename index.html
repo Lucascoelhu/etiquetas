@@ -709,8 +709,7 @@ async function initEditor(licId) {
   } else {
     const loaded = loadConfig();
     if (!loaded) {
-      tags=DEFAULT_CONFIG.tags; layouts=DEFAULT_CONFIG.layouts;
-      tagPos=DEFAULT_CONFIG.tagPos; nextId=DEFAULT_CONFIG.nextId;
+      loadDefaultConfig();
     }
     const activeCfg = loaded ? JSON.parse(localStorage.getItem('etiquetas_v4')) : DEFAULT_CONFIG;
     ensureHiddenInputs(activeCfg);
@@ -719,6 +718,19 @@ async function initEditor(licId) {
   renderAll();
   updatePrintStyle();
   setTimeout(()=>{const h=document.getElementById('canvas-hint');if(h)h.style.opacity='0';},4000);
+}
+
+function loadDefaultConfig() {
+  // Deep copy para evitar referências compartilhadas
+  const cfg = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  tags = []; layouts = {}; tagPos = {};
+  cfg.tags.forEach(defTag => {
+    const defKey = String(defTag.id);
+    tags.push({...defTag});
+    layouts[defTag.id] = cfg.layouts[defKey] || defaultLayout(defTag.modelo||1);
+    tagPos[defTag.id]  = cfg.tagPos[defKey]  || {x:20, y:20};
+  });
+  nextId = cfg.nextId || (Math.max(...cfg.tags.map(t=>t.id)) + 1);
 }
 
 async function loadFromFirestore(licId) {
@@ -731,15 +743,14 @@ async function loadFromFirestore(licId) {
       ensureHiddenInputs(cfg);
     } else {
       // primeira vez: usa default
-      applyConfig(DEFAULT_CONFIG);
+      loadDefaultConfig();
       ensureHiddenInputs(DEFAULT_CONFIG);
     }
   } catch(e) {
     console.warn('Firestore load error, usando localStorage:', e);
     const loaded = loadConfig();
     if (!loaded) {
-      tags=DEFAULT_CONFIG.tags; layouts=DEFAULT_CONFIG.layouts;
-      tagPos=DEFAULT_CONFIG.tagPos; nextId=DEFAULT_CONFIG.nextId;
+      loadDefaultConfig();
     }
     const activeCfg = loaded ? JSON.parse(localStorage.getItem('etiquetas_v4')) : DEFAULT_CONFIG;
     ensureHiddenInputs(activeCfg);
