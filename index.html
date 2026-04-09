@@ -59,6 +59,18 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 .et-handle{height:18px;background:#0077cc;cursor:grab;border-radius:2px 2px 0 0;display:none;align-items:center;justify-content:center;font-size:11px;color:#fff;letter-spacing:3px;user-select:none;touch-action:none}
 .et-wrapper.sel .et-handle{display:flex}
 .et-handle:active{cursor:grabbing}
+.et-canvas-wrap{position:relative;display:inline-block;}
+.et-remove-btn{
+  position:absolute;top:-9px;right:-9px;
+  width:20px;height:20px;border-radius:50%;
+  background:#e53935;color:#fff;border:2px solid #fff;
+  font-size:13px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+  z-index:20;font-weight:700;
+  transition:background .15s, transform .15s;
+}
+.et-remove-btn:hover{background:#b71c1c;transform:scale(1.15);}
 .et-canvas{position:relative;background:white;overflow:hidden}
 .et-el{position:absolute;cursor:move;user-select:none;white-space:nowrap;line-height:1.1;touch-action:none}
 .et-el.sel-el{outline:1.5px dashed #0077cc !important}
@@ -1273,15 +1285,28 @@ function renderAll() {
       canvas.className='et-canvas';
       canvas.addEventListener('click',e=>{if(e.target===canvas){e.stopPropagation();selectTag(t.id);}});
 
+      // X sempre visível no canto superior direito do canvas
+      const rmBtn=document.createElement('button');
+      rmBtn.className='et-remove-btn';
+      rmBtn.textContent='×';
+      rmBtn.title='Remover etiqueta';
+      rmBtn.addEventListener('click',e=>{e.stopPropagation();removeTag(t.id);});
+
+      // Wrap canvas + X juntos para posicionamento correto
+      const canvasWrap=document.createElement('div');
+      canvasWrap.className='et-canvas-wrap';
+      canvasWrap.appendChild(canvas);
+      canvasWrap.appendChild(rmBtn);
+
       wrapper.appendChild(handle);
-      wrapper.appendChild(canvas);
+      wrapper.appendChild(canvasWrap);
       area.appendChild(wrapper);
     }
 
     wrapper.classList.toggle('sel',selTagId===t.id);
     wrapper.style.left=pos.x+'px'; wrapper.style.top=pos.y+'px';
 
-    const canvas=wrapper.querySelector('.et-canvas');
+    const canvas=wrapper.querySelector('.et-canvas-wrap .et-canvas')||wrapper.querySelector('.et-canvas');
     canvas.style.cssText=`width:${w}px;height:${h}px;border:${borda}px solid ${corB};background:${corF};position:relative;overflow:hidden`;
 
     const lay=getLayout(t.id);
@@ -1458,6 +1483,16 @@ function hideSnap(canvas){
   canvas._snapLines.forEach(l=>l.el.classList.remove('show'));
 }
 
+
+// Chaves que só se movem no eixo X
+const PRICE_KEYS = new Set([
+  'precoInt','centavos','rs',
+  'precoInt2a','centavos2a','rs2a',
+  'precoInt2b','centavos2b','rs2b',
+  'precoNew','centsNew','rsNew',
+  'precoOld','centsOld','rsOld',
+  'qtd1','qtd3','porLabel1','porLabel2','ouLabel'
+]);
 function makeDraggable(el){
   let ox,oy,sx,sy,active=false;
   let companions=[];
@@ -1482,9 +1517,10 @@ function makeDraggable(el){
     if(!active) return;
     const tid=+el.dataset.tid, key=el.dataset.key;
     const cfg=getLayout(tid)[key];
-    let nx=ox+(cx-sx), ny=oy+(cy-sy);
+    const lockY = PRICE_KEYS.has(key);
+    let nx=ox+(cx-sx), ny=lockY ? oy : oy+(cy-sy);
     const snX=snap(nx), snY=snap(ny);
-    const didSnapX=Math.abs(snX-nx)<SNAP, didSnapY=Math.abs(snY-ny)<SNAP;
+    const didSnapX=Math.abs(snX-nx)<SNAP, didSnapY=(!lockY)&&Math.abs(snY-ny)<SNAP;
     if(didSnapX) nx=snX;
     if(didSnapY) ny=snY;
     cfg.x=nx; cfg.y=ny;
