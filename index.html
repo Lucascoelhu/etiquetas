@@ -27,7 +27,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 .tag-item-header:hover{background:#ebebeb}
 .tag-item.active .tag-item-header{background:#ddeeff;color:#0055aa;border-radius:4px 4px 0 0}
 .tag-item-body{padding:8px;display:flex;flex-direction:column;gap:5px}
-.tag-item-body input{width:100%;padding:5px 7px;font-size:13px;border:1px solid #ccc;border-radius:3px}
+.tag-item-body input{width:100%;padding:5px 7px;font-size:13px;border:1px solid #ccc;border-radius:3px;text-transform:uppercase}
 .preco-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .btn-add{width:100%;padding:8px;font-size:13px;font-weight:700;background:#f0f0f0;border:1px solid #ccc;border-radius:4px;cursor:pointer;margin-top:4px}
 .btn-add:hover{background:#e0e0e0}
@@ -85,7 +85,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 /* ===== INLINE POPUP ===== */
 .inline-popup{position:fixed;z-index:9999;background:#fff;border:2px solid #0077cc;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.3);padding:12px 14px;min-width:240px}
 .inline-popup label{display:block;font-size:11px;color:#666;margin-bottom:4px;font-weight:700}
-.inline-popup input{width:100%;padding:8px 10px;font-size:16px;border:1px solid #ccc;border-radius:4px;font-family:Arial,sans-serif}
+.inline-popup input{width:100%;padding:8px 10px;font-size:16px;border:1px solid #ccc;border-radius:4px;font-family:Arial,sans-serif;text-transform:uppercase}
 .inline-popup input:focus{outline:2px solid #0077cc;border-color:#0077cc}
 .inline-popup-btns{display:flex;gap:6px;margin-top:8px}
 .inline-popup-btns button{flex:1;padding:8px;font-size:13px;font-weight:700;border:none;border-radius:4px;cursor:pointer}
@@ -1016,10 +1016,39 @@ function buildConfigHTML() {
         <div class="campo"><label>Esquerda (cm)</label><input type="number" id="mg-left" value="${ml}" min="0" max="5" step="0.1" oninput="syncHidden('mg-left',this.value);updatePrintStyle()"></div>
       </div>
     </div>
+    ${selTagId ? `
+    <div class="section">
+      <div class="section-title">Cores da etiqueta selecionada</div>
+      <div class="grid2">
+        ${(() => {
+          const t = tags.find(t=>t.id===selTagId);
+          if (!t) return '';
+          return `
+          <div class="campo"><label>Fundo</label>
+            <input type="color" value="${t.corFundo||'#ffffff'}"
+              oninput="setTagColor(${t.id},'corFundo',this.value)"
+              onchange="setTagColor(${t.id},'corFundo',this.value)"
+              style="width:100%;height:36px;padding:1px 2px;cursor:pointer;border:1px solid #ccc;border-radius:3px">
+          </div>
+          <div class="campo"><label>Borda</label>
+            <input type="color" value="${t.corBorda||'#afa1a1'}"
+              oninput="setTagColor(${t.id},'corBorda',this.value)"
+              onchange="setTagColor(${t.id},'corBorda',this.value)"
+              style="width:100%;height:36px;padding:1px 2px;cursor:pointer;border:1px solid #ccc;border-radius:3px">
+          </div>
+          <div class="campo"><label>Cor texto</label>
+            <input type="color" value="${t.corTexto||'#000000'}"
+              oninput="setTagColor(${t.id},'corTexto',this.value)"
+              onchange="setTagColor(${t.id},'corTexto',this.value)"
+              style="width:100%;height:36px;padding:1px 2px;cursor:pointer;border:1px solid #ccc;border-radius:3px">
+          </div>`;
+        })()}
+      </div>
+    </div>` : `<div class="section"><div style="font-size:12px;color:#aaa">Selecione uma etiqueta no canvas para editar as cores.</div></div>`}
     <div class="section" style="display:flex;flex-direction:column;gap:7px">
       <button class="btn-export admin-only" onclick="exportConfig()">📋 Exportar config (código)</button>
     </div>
-  `;
+  \`;
 }
 
 function buildElementoPanelHTML() {
@@ -1243,10 +1272,6 @@ function selectTag(id) {
   refreshTagList();
   renderAll();
   renderSidebar();
-  // Mobile: abre drawer de etiquetas automaticamente com a tag expandida
-  if (isMobile() && selTagId) {
-    openDrawer('etiquetas');
-  }
 }
 
 function selectEl(tagId, key, shiftKey=false) {
@@ -1561,7 +1586,7 @@ function startInlineEdit(el, tagId, key) {
   setTimeout(()=>{ input.focus(); input.select(); },50);
 
   inlineCommit = () => {
-    if(tagIdx>=0&&FIELD_MAP[key]) tags[tagIdx][FIELD_MAP[key]]=input.value;
+    if(tagIdx>=0&&FIELD_MAP[key]) tags[tagIdx][FIELD_MAP[key]]=input.value.toUpperCase();
     popup.style.display='none';
     refreshTagList(); renderAll();
     inlineCommit=null; inlineCancel=null;
@@ -1863,7 +1888,7 @@ const DEFAULT_CONFIG = {
       "porLabel1":  {"x":64, "y":44, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
       "rs2a":       {"x":104,"y":44, "size":14,"bold":false,"italic":false,"color":"",       "visible":true},
       "precoInt2a": {"x":144,"y":32, "size":40,"bold":true, "italic":false,"color":"#cc0000","visible":true},
-      "centavos2a": {"x":176,"y":32, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
+      "centavos2a": {"x":176,"y":34, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "ouLabel":    {"x":68, "y":64, "size":15,"bold":false,"italic":false,"color":"#888",   "visible":true},
       "qtd3":       {"x":24, "y":76, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "porLabel2":  {"x":64, "y":84, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
