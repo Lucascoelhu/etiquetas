@@ -1001,7 +1001,7 @@ function buildTagListHTML() {
   return tags.map((t,i) => `
     <div class="tag-item${selTagId===t.id?' active':''}">
       <div class="tag-item-header" onclick="selectTag(${t.id})">
-        <span>${t.nome||'(sem nome)'}</span>
+        <span>${t.modelo===2?(t.nome2||'(sem nome)'):t.modelo===3?(t.nome3||'(sem nome)'):(t.nome||'(sem nome)')}</span>
         <div style="display:flex;gap:2px;align-items:center">
           <button class="btn-dup" title="Duplicar" onclick="event.stopPropagation();duplicateTag(${t.id})">⧉</button>
           <button class="btn-rm" onclick="event.stopPropagation();removeTag(${t.id})">×</button>
@@ -1198,6 +1198,13 @@ function addTag() {
   if (modelo===1) tags.push({id, modelo:1, nome:'PRODUTO', marca:'MARCA', precoInt:'0', centavos:',00', und:'CADA'});
   else if (modelo===2) tags.push({id, modelo:2, nome2:'PRODUTO', marca2:'MARCA', qtd1:'1', precoInt2a:'0', centavos2a:',00', qtd3:'3', precoInt2b:'0', centavos2b:',00'});
   else if (modelo===3) tags.push({id, modelo:3, nome3:'PRODUTO', marca3:'MARCA', precoOld:'9', centsOld:',99', precoNew:'7', centsNew:',99', undNew:'CADA'});
+  // Herda layout do DEFAULT_CONFIG do mesmo modelo (posições e tamanhos já ajustados)
+  const defForModelo = DEFAULT_CONFIG.tags.find(t=>(t.modelo||1)===modelo);
+  if (defForModelo) {
+    const defKey = String(defForModelo.id);
+    if (DEFAULT_CONFIG.layouts[defKey])
+      layouts[id] = JSON.parse(JSON.stringify(DEFAULT_CONFIG.layouts[defKey]));
+  }
   selTagId=id; selElKey=null;
   refreshTagList(); renderAll();
 }
@@ -1217,13 +1224,16 @@ function removeTag(id) {
   tags=tags.filter(t=>t.id!==id);
   delete layouts[id]; delete tagPos[id];
   if(selTagId===id){selTagId=null;selElKey=null;}
-  // Se ficou vazio, restaura o modelo padrão (modelo 1)
+  // Se ficou vazio, restaura os 3 modelos padrão
   if(tags.length===0){
-    const defTag = DEFAULT_CONFIG.tags[0];
-    const newId = nextId++;
-    tags = [{...defTag, id:newId}];
-    layouts[newId] = JSON.parse(JSON.stringify(DEFAULT_CONFIG.layouts['1']));
-    tagPos[newId]  = {x:20, y:20};
+    tags = []; layouts = {}; tagPos = {};
+    DEFAULT_CONFIG.tags.forEach((defTag, i) => {
+      const newId = nextId++;
+      const defKey = String(defTag.id);
+      tags.push({...defTag, id:newId});
+      layouts[newId] = JSON.parse(JSON.stringify(DEFAULT_CONFIG.layouts[defKey]||defaultLayout(defTag.modelo||1)));
+      tagPos[newId]  = {x: 20 + i*(tagW()+20), y:20};
+    });
   }
   refreshTagList(); renderAll(); renderSidebar();
 }
