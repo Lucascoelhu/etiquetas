@@ -685,8 +685,21 @@ function msHas(tagId,key){ return multiSel.has(msKey(tagId,key)); }
 function msSize(){ return multiSel.size; }
 function msItems(){ return [...multiSel].map(s=>{ const [tid,k]=s.split(':'); return {tagId:+tid,key:k}; }); }
 
-const EL_NAMES = {nome:'Nome', marca:'Marca', rs:'"R$"', precoInt:'Valor inteiro', centavos:'Centavos', und:'Unidade'};
-const FIELD_MAP = {nome:'nome', marca:'marca', precoInt:'precoInt', centavos:'centavos', und:'und'};
+const EL_NAMES = {
+  // modelo 1 (preço simples)
+  nome:'Nome', marca:'Marca', rs:'"R$"', precoInt:'Valor inteiro', centavos:'Centavos', und:'Unidade',
+  // modelo 2 (qtd por preço)
+  qtd:'Qtd (ex: 3)', porLabel:'"por"', rs2:'"R$"', precoInt2:'Valor inteiro', centavos2:'Centavos',
+  // modelo 3 (preço riscado)
+  nome3:'Nome', marca3:'Marca', rsOld:'"R$" riscado', precoOld:'Valor riscado', centsOld:'Centavos riscado',
+  rsNew:'"R$" novo', precoNew:'Valor novo', centsNew:'Centavos novo', undNew:'Unidade'
+};
+const FIELD_MAP = {
+  nome:'nome', marca:'marca', precoInt:'precoInt', centavos:'centavos', und:'und',
+  qtd:'qtd', precoInt2:'precoInt2', centavos2:'centavos2',
+  nome3:'nome3', marca3:'marca3', precoOld:'precoOld', centsOld:'centsOld',
+  precoNew:'precoNew', centsNew:'centsNew', undNew:'undNew'
+};
 
 function tagW(){
   const vis=document.querySelector('[id="tag-w"]:not([type="hidden"])');
@@ -716,8 +729,28 @@ function updatePrintStyle() {
   document.getElementById('print-margins').textContent=`@media print{@page{margin:${t}cm ${r}cm ${b}cm ${l}cm}}`;
 }
 
-function defaultLayout() {
-  const h = tagH();
+function defaultLayout(modelo) {
+  const h = tagH(), w = tagW();
+  modelo = modelo || 1;
+  if (modelo === 2) return {
+    qtd:       {x:8,   y:8,      size:52, bold:true,  italic:false, color:'', visible:true},
+    porLabel:  {x:8,   y:62,     size:22, bold:false, italic:false, color:'', visible:true},
+    rs2:       {x:8,   y:88,     size:22, bold:false, italic:false, color:'', visible:true},
+    precoInt2: {x:40,  y:60,     size:56, bold:true,  italic:false, color:'#cc0000', visible:true},
+    centavos2: {x:100, y:62,     size:44, bold:true,  italic:false, color:'#cc0000', visible:true},
+  };
+  if (modelo === 3) return {
+    nome3:    {x:8,   y:8,      size:16, bold:true,  italic:false, color:'', visible:true},
+    marca3:   {x:8,   y:28,     size:14, bold:false, italic:false, color:'', visible:true},
+    rsOld:    {x:8,   y:54,     size:13, bold:false, italic:false, color:'#888', visible:true},
+    precoOld: {x:28,  y:46,     size:28, bold:false, italic:false, color:'#888', visible:true},
+    centsOld: {x:62,  y:48,     size:22, bold:false, italic:false, color:'#888', visible:true},
+    rsNew:    {x:8,   y:88,     size:14, bold:false, italic:false, color:'', visible:true},
+    precoNew: {x:28,  y:74,     size:50, bold:true,  italic:false, color:'#cc0000', visible:true},
+    centsNew: {x:86,  y:76,     size:38, bold:true,  italic:false, color:'#cc0000', visible:true},
+    undNew:   {x:w-50,y:h-20,   size:14, bold:false, italic:false, color:'', visible:true},
+  };
+  // modelo 1 (default)
   return {
     nome:     {x:15, y:12,      size:18, bold:true,  italic:false, color:'', visible:true},
     marca:    {x:15, y:43,      size:18, bold:false, italic:false, color:'', visible:true},
@@ -729,7 +762,8 @@ function defaultLayout() {
 }
 
 function getLayout(id) {
-  if (!layouts[id]) layouts[id] = defaultLayout();
+  const t = tags.find(t=>t.id===id);
+  if (!layouts[id]) layouts[id] = defaultLayout(t ? t.modelo : 1);
   return layouts[id];
 }
 
@@ -747,6 +781,14 @@ function buildEtiquetasHTML() {
     <div class="section">
       <div class="section-title">Etiquetas</div>
       <div id="tag-list-inner"></div>
+      <div style="margin-top:6px">
+        <div style="font-size:11px;color:#999;margin-bottom:4px">Modelo da nova etiqueta</div>
+        <select id="new-tag-modelo" style="width:100%;padding:5px 7px;font-size:12px;border:1px solid #ccc;border-radius:3px;margin-bottom:6px">
+          <option value="1">Modelo 1 — Preço simples (R$ 5,99 CADA)</option>
+          <option value="2">Modelo 2 — Quantidade (3 por R$ 5,99)</option>
+          <option value="3">Modelo 3 — Promoção (riscado → novo preço)</option>
+        </select>
+      </div>
       <button class="btn-add" onclick="addTag()">+ Nova etiqueta</button>
     </div>
   `;
@@ -868,19 +910,44 @@ function buildTagListHTML() {
         </div>
       </div>
       <div class="tag-item-body" style="display:${selTagId===t.id?'flex':'none'}">
-        <input type="text" placeholder="Nome" value="${esc(t.nome)}" oninput="tags[${i}].nome=this.value;renderAll();refreshTagList()">
-        <input type="text" placeholder="Marca / Info" value="${esc(t.marca)}" oninput="tags[${i}].marca=this.value;renderAll()">
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">📐 ${t.modelo===2?'Modelo 2 · Qtd por preço':t.modelo===3?'Modelo 3 · Preço riscado':'Modelo 1 · Preço simples'}</div>
+        ${t.modelo===2?`
+        <input type="text" placeholder="Qtd (ex: 3 ou 1)" value="${esc(t.qtd||'')}" oninput="tags[${i}].qtd=this.value;renderAll()">
         <div class="preco-row">
-          <div>
-            <div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
-            <input type="text" placeholder="5" value="${esc(t.precoInt)}" oninput="tags[${i}].precoInt=this.value;renderAll()">
-          </div>
-          <div>
-            <div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-            <input type="text" placeholder=",99" value="${esc(t.centavos)}" oninput="tags[${i}].centavos=this.value;renderAll()">
-          </div>
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
+          <input type="text" placeholder="5" value="${esc(t.precoInt2||'')}" oninput="tags[${i}].precoInt2=this.value;renderAll()"></div>
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
+          <input type="text" placeholder=",99" value="${esc(t.centavos2||'')}" oninput="tags[${i}].centavos2=this.value;renderAll()"></div>
         </div>
-        <input type="text" placeholder="Unidade (CADA, KG...)" value="${esc(t.und)}" oninput="tags[${i}].und=this.value;renderAll()">
+        `:t.modelo===3?`
+        <input type="text" placeholder="Nome" value="${esc(t.nome3||'')}" oninput="tags[${i}].nome3=this.value;renderAll();refreshTagList()">
+        <input type="text" placeholder="Marca / Info" value="${esc(t.marca3||'')}" oninput="tags[${i}].marca3=this.value;renderAll()">
+        <div style="font-size:11px;color:#999;margin:4px 0 2px">Preço antigo (riscado)</div>
+        <div class="preco-row">
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor</div>
+          <input type="text" placeholder="9" value="${esc(t.precoOld||'')}" oninput="tags[${i}].precoOld=this.value;renderAll()"></div>
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
+          <input type="text" placeholder=",99" value="${esc(t.centsOld||'')}" oninput="tags[${i}].centsOld=this.value;renderAll()"></div>
+        </div>
+        <div style="font-size:11px;color:#999;margin:4px 0 2px">Novo preço</div>
+        <div class="preco-row">
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor</div>
+          <input type="text" placeholder="7" value="${esc(t.precoNew||'')}" oninput="tags[${i}].precoNew=this.value;renderAll()"></div>
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
+          <input type="text" placeholder=",99" value="${esc(t.centsNew||'')}" oninput="tags[${i}].centsNew=this.value;renderAll()"></div>
+        </div>
+        <input type="text" placeholder="Unidade (CADA, KG...)" value="${esc(t.undNew||'')}" oninput="tags[${i}].undNew=this.value;renderAll()">
+        `:`
+        <input type="text" placeholder="Nome" value="${esc(t.nome||'')}" oninput="tags[${i}].nome=this.value;renderAll();refreshTagList()">
+        <input type="text" placeholder="Marca / Info" value="${esc(t.marca||'')}" oninput="tags[${i}].marca=this.value;renderAll()">
+        <div class="preco-row">
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
+          <input type="text" placeholder="5" value="${esc(t.precoInt||'')}" oninput="tags[${i}].precoInt=this.value;renderAll()"></div>
+          <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
+          <input type="text" placeholder=",99" value="${esc(t.centavos||'')}" oninput="tags[${i}].centavos=this.value;renderAll()"></div>
+        </div>
+        <input type="text" placeholder="Unidade (CADA, KG...)" value="${esc(t.und||'')}" oninput="tags[${i}].und=this.value;renderAll()">
+        `}
       </div>
     </div>
   `).join('');
@@ -952,7 +1019,10 @@ function selectEl(tagId, key, shiftKey=false) {
 
 function addTag() {
   const id = nextId++;
-  tags.push({id, nome:'PRODUTO', marca:'MARCA', precoInt:'0', centavos:',00', und:'CADA'});
+  const modelo = parseInt(document.getElementById('new-tag-modelo')?.value||'1')||1;
+  if (modelo===1) tags.push({id, modelo:1, nome:'PRODUTO', marca:'MARCA', precoInt:'0', centavos:',00', und:'CADA'});
+  else if (modelo===2) tags.push({id, modelo:2, qtd:'3', precoInt2:'0', centavos2:',00'});
+  else if (modelo===3) tags.push({id, modelo:3, nome3:'PRODUTO', marca3:'MARCA', precoOld:'9', centsOld:',99', precoNew:'7', centsNew:',99', undNew:'CADA'});
   selTagId=id; selElKey=null;
   refreshTagList(); renderAll();
 }
@@ -960,7 +1030,7 @@ function addTag() {
 function duplicateTag(srcId) {
   const src = tags.find(t=>t.id===srcId); if(!src) return;
   const id = nextId++;
-  tags.push({...src, id});
+  tags.push({...src, id, modelo: src.modelo||1});
   layouts[id] = JSON.parse(JSON.stringify(getLayout(srcId)));
   const p = getTagPos(srcId);
   tagPos[id] = {x:p.x+tagW()+20, y:p.y};
@@ -1022,12 +1092,39 @@ function renderAll() {
     canvas.style.cssText=`width:${w}px;height:${h}px;border:${borda}px solid ${corB};background:${corF};position:relative;overflow:hidden`;
 
     const lay=getLayout(t.id);
-    const elDefs={nome:t.nome,marca:t.marca,rs:'R$',precoInt:t.precoInt,centavos:t.centavos,und:t.und};
+    // elDefs por modelo
+    let elDefs;
+    const m = t.modelo||1;
+    if (m===2) {
+      elDefs = {
+        qtd:       t.qtd||'3',
+        porLabel:  'por',
+        rs2:       'R$',
+        precoInt2: t.precoInt2||'0',
+        centavos2: t.centavos2||',00',
+      };
+    } else if (m===3) {
+      elDefs = {
+        nome3:    t.nome3||'PRODUTO',
+        marca3:   t.marca3||'MARCA',
+        rsOld:    'R$',
+        precoOld: t.precoOld||'9',
+        centsOld: t.centsOld||',99',
+        rsNew:    'R$',
+        precoNew: t.precoNew||'7',
+        centsNew: t.centsNew||',99',
+        undNew:   t.undNew||'CADA',
+      };
+    } else {
+      elDefs = {nome:t.nome,marca:t.marca,rs:'R$',precoInt:t.precoInt,centavos:t.centavos,und:t.und};
+    }
 
+    // Remove elementos de outros modelos
     canvas.querySelectorAll('.et-el').forEach(e=>{if(!elDefs.hasOwnProperty(e.dataset.key))e.remove();});
 
     Object.entries(elDefs).forEach(([key,text])=>{
       const cfg=lay[key];
+      if(!cfg) return;
       let el=canvas.querySelector(`[data-key="${key}"]`);
       if(!el){
         el=document.createElement('div');
@@ -1050,14 +1147,16 @@ function renderAll() {
           lastTap=now;
         });
       }
-      el.style.display    = cfg.visible===false?'none':'';
-      el.style.left       = (cfg.x||0)+'px';
-      el.style.top        = (cfg.y||0)+'px';
-      el.style.fontSize   = (cfg.size||16)+'px';
-      el.style.fontWeight = cfg.bold?'700':'400';
-      el.style.fontStyle  = cfg.italic?'italic':'normal';
-      el.style.color      = cfg.color||corT;
-      el.textContent      = text;
+      el.style.display         = cfg.visible===false?'none':'';
+      el.style.left            = (cfg.x||0)+'px';
+      el.style.top             = (cfg.y||0)+'px';
+      el.style.fontSize        = (cfg.size||16)+'px';
+      el.style.fontWeight      = cfg.bold?'700':'400';
+      el.style.fontStyle       = cfg.italic?'italic':'normal';
+      el.style.color           = cfg.color||corT;
+      // tachado para preços antigos do modelo 3
+      el.style.textDecoration  = (m===3 && (key==='precoOld'||key==='centsOld'||key==='rsOld')) ? 'line-through' : '';
+      el.textContent           = text;
       el.classList.toggle('sel-el',    selTagId===t.id && selElKey===key && !msHas(t.id,key));
       el.classList.toggle('sel-multi', msHas(t.id,key) || (selTagId===t.id && selElKey===key && msSize()>0));
     });
@@ -1067,7 +1166,7 @@ function renderAll() {
 }
 
 function startInlineEdit(el, tagId, key) {
-  if (key==='rs') return;
+  if (key==='rs'||key==='rs2'||key==='rsOld'||key==='rsNew'||key==='porLabel') return;
   const tagIdx = tags.findIndex(t=>t.id===tagId);
   const cfg    = getLayout(tagId)[key];
   const popup  = document.getElementById('inline-popup');
