@@ -151,8 +151,13 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
   .canvas-inner{width:auto;height:auto;position:static;display:flex;flex-wrap:wrap;gap:0}
   .et-wrapper{position:static!important;display:inline-flex;flex-direction:column;margin:2px}
   .et-canvas-wrap{position:relative}
-  .et-wrapper.sel .et-canvas{outline:none!important}
-  .et-el{cursor:default;outline:none!important}
+  .et-wrapper.sel .et-canvas{outline:none!important;border-color:inherit!important}
+  .et-el{cursor:default;outline:none!important;text-decoration:inherit}
+  .et-canvas{
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+    color-adjust:exact!important;
+  }
   @page{margin:1cm;size:A4}
 }
 
@@ -343,6 +348,11 @@ body.is-admin button.admin-only { display: flex !important; }
       <button class="lic-btn" id="c-btn" onclick="activateClient()">Ativar →</button>
       <div class="lic-err" id="c-err"></div>
       <div class="lic-ok"  id="c-ok"></div>
+      <div id="c-logout-wrap" style="display:none;margin-top:16px;text-align:center">
+        <button onclick="clientLogout()" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit">
+          Sair da conta
+        </button>
+      </div>
     </div>
 
     <!-- TAB ADMIN -->
@@ -406,7 +416,7 @@ body.is-admin button.admin-only { display: flex !important; }
   </div>
   <div class="sidebar-footer">
     <div class="save-msg" id="save-msg-desktop"></div>
-    <button class="btn-save"   onclick="saveConfig()">💾 Salvar configuração</button>
+    <!-- Salvar removido: config salva automaticamente no Firestore -->
     <button class="btn-export admin-only" onclick="exportConfig()">📋 Exportar config</button>
     <button class="btn-print"  onclick="window.print()">🖨️ Imprimir</button>
   </div>
@@ -422,7 +432,7 @@ body.is-admin button.admin-only { display: flex !important; }
   <button class="mob-btn" onclick="openDrawer('etiquetas')"><span class="icon">🏷️</span>Etiquetas</button>
   <button class="mob-btn" id="mob-btn-el" onclick="openDrawer('elemento')"><span class="icon">✏️</span>Elemento</button>
   <button class="mob-btn" onclick="openDrawer('config')"><span class="icon">⚙️</span>Config</button>
-  <button class="mob-btn" onclick="saveConfig()"><span class="icon">💾</span>Salvar</button>
+
   <button class="mob-btn" onclick="window.print()"><span class="icon">🖨️</span>Imprimir</button>
 </div>
 
@@ -751,12 +761,9 @@ async function initEditor(licId) {
   if (licId) {
     await loadFromFirestore(licId);
   } else {
-    const loaded = loadConfig();
-    if (!loaded) {
-      loadDefaultConfig();
-    }
-    const activeCfg = loaded ? JSON.parse(localStorage.getItem('etiquetas_v4')) : DEFAULT_CONFIG;
-    ensureHiddenInputs(activeCfg);
+    // Admin: sempre carrega DEFAULT_CONFIG (ignora localStorage)
+    loadDefaultConfig();
+    ensureHiddenInputs(DEFAULT_CONFIG);
   }
   renderSidebar();
   renderAll();
@@ -809,6 +816,25 @@ window._db  = db;
 window._doc = doc;
 window._updateDoc = updateDoc;
 window._serverTimestamp = serverTimestamp;
+
+/* ── CLIENT LOGOUT ── */
+window.clientLogout = () => {
+  localStorage.removeItem('etq_session');
+  document.getElementById('c-email').value = '';
+  document.getElementById('c-token').value = '';
+  document.getElementById('c-logout-wrap').style.display = 'none';
+  document.getElementById('c-ok').textContent = '';
+};
+
+// Mostra botão "Sair" se já tem sessão salva
+const _sess = localStorage.getItem('etq_session');
+if (_sess) {
+  try {
+    const _sd = JSON.parse(_sess);
+    document.getElementById('c-email').value = _sd.email || '';
+    document.getElementById('c-logout-wrap').style.display = 'block';
+  } catch(e) {}
+}
 
 /* ── TENTA RESTAURAR SESSÃO AO CARREGAR ── */
 tryRestoreSession();
@@ -1431,9 +1457,15 @@ function renderAll() {
         el.addEventListener('touchend',e=>{
           if(longTimer){clearTimeout(longTimer);longTimer=null;}
           const now=Date.now();
-          if(now-lastTap<350){e.preventDefault();e.stopPropagation();startInlineEdit(el,t.id,key);}
-          else{e.stopPropagation();selectEl(t.id,key);}
+          const diff=now-lastTap;
           lastTap=now;
+          if(diff>0 && diff<450){
+            e.preventDefault();e.stopPropagation();
+            startInlineEdit(el,t.id,key);
+          } else {
+            e.stopPropagation();
+            selectEl(t.id,key);
+          }
         });
       }
       el.style.display         = cfg.visible===false?'none':'';
@@ -1654,10 +1686,7 @@ function getFullConfig(){
 async function saveConfig(){
   const cfg = getFullConfig();
 
-  // Salva localStorage sempre (fallback)
-  localStorage.setItem('etiquetas_v4', JSON.stringify(cfg));
-
-  // Se cliente: salva no Firestore também
+  // Se cliente: salva no Firestore
   if (window._licId && window._db && window._doc && window._updateDoc) {
     try {
       await window._updateDoc(
