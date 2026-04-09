@@ -122,15 +122,18 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 }
 
 @media print{
-  .sidebar,.mobile-bar,.drawer,.drawer-overlay,.canvas-hint,.inline-popup,#license-screen,#admin-bar{display:none!important}
-  body{background:white}
+  .sidebar,.mobile-bar,.drawer,.drawer-overlay,.canvas-hint,.inline-popup,
+  #license-screen,#admin-bar,#welcome-screen,#expired-overlay,
+  .et-remove-btn,.et-handle{display:none!important}
+  body{background:white;margin:0;padding:0}
   .app{display:block;height:auto}
   .canvas-area{overflow:visible;background:white;position:static;padding:0}
-  .canvas-inner{width:auto;height:auto;position:static;display:flex;flex-wrap:wrap}
-  .et-wrapper{position:static;display:inline-block;margin:0}
-  .et-wrapper.sel .et-canvas{outline:none}
-  .et-handle{display:none!important}
+  .canvas-inner{width:auto;height:auto;position:static;display:flex;flex-wrap:wrap;gap:0}
+  .et-wrapper{position:static!important;display:inline-flex;flex-direction:column;margin:2px}
+  .et-canvas-wrap{position:relative}
+  .et-wrapper.sel .et-canvas{outline:none!important}
   .et-el{cursor:default;outline:none!important}
+  @page{margin:1cm;size:A4}
 }
 
 /* ===========================
@@ -180,6 +183,12 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 .lic-err{color:#c0392b;font-size:12px;margin-top:10px;min-height:18px;text-align:center}
 .lic-ok{color:#119911;font-size:12px;margin-top:10px;min-height:18px;text-align:center;font-weight:700}
 .lic-spinner{text-align:center;padding:12px 0;color:#0077cc;font-size:13px}
+
+/* ===== ADMIN ONLY ELEMENTS ===== */
+.admin-only { display: none !important; }
+body.is-admin .admin-only { display: block !important; }
+body.is-admin .btn-save ~ .admin-only,
+body.is-admin button.admin-only { display: flex !important; }
 
 /* ===== ADMIN BAR ===== */
 #admin-bar{
@@ -364,7 +373,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
   <div class="sidebar-footer">
     <div class="save-msg" id="save-msg-desktop"></div>
     <button class="btn-save"   onclick="saveConfig()">💾 Salvar configuração</button>
-    <button class="btn-export" onclick="exportConfig()">📋 Exportar config</button>
+    <button class="btn-export admin-only" onclick="exportConfig()">📋 Exportar config</button>
     <button class="btn-print"  onclick="window.print()">🖨️ Imprimir</button>
   </div>
 </div>
@@ -648,6 +657,7 @@ async function enterApp(mode, email, licId, licData, skipWelcome) {
     document.getElementById('admin-bar').classList.add('show');
     document.getElementById('app-with-bar').classList.add('has-bar');
     document.getElementById('admin-bar-email').textContent = email;
+    document.body.classList.add('is-admin');
     initEditor(null);
   } else {
     if (skipWelcome) {
@@ -941,7 +951,7 @@ function buildConfigHTML() {
       </div>
     </div>
     <div class="section" style="display:flex;flex-direction:column;gap:7px">
-      <button class="btn-export" onclick="exportConfig()">📋 Exportar config (código)</button>
+      <button class="btn-export admin-only" onclick="exportConfig()">📋 Exportar config (código)</button>
     </div>
   `;
 }
@@ -1725,7 +1735,7 @@ const DEFAULT_CONFIG = {
       "porLabel1":  {"x":64, "y":44, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
       "rs2a":       {"x":104,"y":44, "size":14,"bold":false,"italic":false,"color":"",       "visible":true},
       "precoInt2a": {"x":144,"y":32, "size":40,"bold":true, "italic":false,"color":"#cc0000","visible":true},
-      "centavos2a": {"x":176,"y":34, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
+      "centavos2a": {"x":176,"y":32, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "ouLabel":    {"x":68, "y":64, "size":15,"bold":false,"italic":false,"color":"#888",   "visible":true},
       "qtd3":       {"x":24, "y":76, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "porLabel2":  {"x":64, "y":84, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
