@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Editor de Etiquetas | COELHO</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -16,7 +16,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 .section-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #f0f0f0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .campo label{display:block;font-size:11px;color:#999;margin-bottom:2px}
-.campo input[type=number],.campo input[type=text],.campo input[type=color]{width:100%;padding:4px 6px;font-size:12px;border:1px solid #ccc;border-radius:3px;background:#fafafa}
+.campo input[type=number],.campo input[type=text],.campo input[type=color]{width:100%;padding:4px 6px;font-size:12px;border:1px solid #ccc;border-radius:3px;background:#fafafa;-webkit-text-size-adjust:100%}
 .campo input[type=color]{height:28px;padding:1px 3px;cursor:pointer}
 .campo input:focus{outline:2px solid #0077cc;border-color:#0077cc}
 .checks{display:flex;flex-direction:column;gap:5px}
@@ -111,14 +111,34 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
 /* ===== MOBILE CANVAS HINT ===== */
 .canvas-hint{display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:5px 12px;border-radius:20px;pointer-events:none;z-index:100;white-space:nowrap}
 
+/* ===== MOBILE: TELAS DE LICENÇA E BOAS-VINDAS ===== */
+@media(max-width:480px){
+  .lic-card{padding:28px 20px;border-radius:12px;margin:12px}
+  .lic-logo-name{font-size:16px}
+  .lic-title{font-size:18px}
+  .lic-sub{font-size:12px}
+  .lic-field input{font-size:16px;padding:10px 12px} /* evita zoom no iOS */
+  .lic-btn{font-size:15px;padding:13px}
+  .wlc-card{padding:32px 20px;margin:12px;border-radius:14px}
+  .wlc-title{font-size:20px}
+  .wlc-name{font-size:17px}
+  .wlc-btn{font-size:15px}
+  .admin-bar-user{display:none} /* esconde email no mobile */
+  .topbar-logo-badge{display:none}
+}
+
 /* ===== RESPONSIVE ===== */
 @media(max-width:700px){
   .app{flex-direction:column}
   .sidebar{display:none}
   .mobile-bar{display:flex}
-  .canvas-area{flex:1;padding-bottom:54px}
+  .canvas-area{flex:1;padding-bottom:54px;overflow:auto}
+  .canvas-inner{transform-origin:top left}
   .canvas-hint{display:block}
   .inline-popup{left:12px!important;right:12px!important;top:auto!important;bottom:80px!important;min-width:0;width:auto}
+  /* Mobile bar botões maiores e mais fáceis de tocar */
+  .mob-btn{min-width:44px;min-height:44px;padding:4px 6px}
+  .mob-btn .icon{font-size:22px}
 }
 
 @media print{
@@ -300,7 +320,7 @@ body.is-admin button.admin-only { display: flex !important; }
       <div class="lic-sub">Insira seu e-mail e o token enviado pelo administrador.</div>
       <div class="lic-field">
         <label>Seu e-mail</label>
-        <input type="email" id="c-email" placeholder="seuemail@exemplo.com" autocomplete="username">
+        <input type="email" id="c-email" placeholder="seuemail@exemplo.com" autocomplete="username" style="font-size:16px">
       </div>
       <div class="lic-field">
         <label>Token de ativação</label>
@@ -317,11 +337,11 @@ body.is-admin button.admin-only { display: flex !important; }
       <div class="lic-sub">Login com sua conta Firebase de administrador.</div>
       <div class="lic-field">
         <label>E-mail admin</label>
-        <input type="email" id="a-email" placeholder="admin@exemplo.com" autocomplete="username">
+        <input type="email" id="a-email" placeholder="admin@exemplo.com" autocomplete="username" style="font-size:16px">
       </div>
       <div class="lic-field">
         <label>Senha</label>
-        <input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password">
+        <input type="password" id="a-pass" placeholder="••••••••" autocomplete="current-password" style="font-size:16px">
       </div>
       <button class="lic-btn" id="a-btn" onclick="loginAdmin()">Entrar →</button>
       <div class="lic-err" id="a-err"></div>
@@ -386,7 +406,7 @@ body.is-admin button.admin-only { display: flex !important; }
 <!-- MOBILE BOTTOM BAR -->
 <div class="mobile-bar">
   <button class="mob-btn" onclick="openDrawer('etiquetas')"><span class="icon">🏷️</span>Etiquetas</button>
-  <button class="mob-btn" id="mob-btn-el" onclick="openDrawer('elemento')" style="display:none"><span class="icon">✏️</span>Elemento</button>
+  <button class="mob-btn" id="mob-btn-el" onclick="openDrawer('elemento')"><span class="icon">✏️</span>Elemento</button>
   <button class="mob-btn" onclick="openDrawer('config')"><span class="icon">⚙️</span>Config</button>
   <button class="mob-btn" onclick="saveConfig()"><span class="icon">💾</span>Salvar</button>
   <button class="mob-btn" onclick="window.print()"><span class="icon">🖨️</span>Imprimir</button>
@@ -1143,8 +1163,7 @@ function selectTag(id) {
   refreshTagList();
   renderAll();
   renderSidebar();
-  const mobBtn = document.getElementById('mob-btn-el');
-  if (mobBtn) mobBtn.style.display = 'none';
+  // mob-btn-el sempre visível no mobile
 }
 
 function selectEl(tagId, key, shiftKey=false) {
@@ -1162,8 +1181,7 @@ function selectEl(tagId, key, shiftKey=false) {
   }
   renderAll();
   renderSidebar();
-  const mobBtn = document.getElementById('mob-btn-el');
-  if (mobBtn) mobBtn.style.display = 'flex';
+  // mob-btn-el sempre visível
   if (isMobile() && !shiftKey) openDrawer('elemento');
 }
 
@@ -1735,7 +1753,7 @@ const DEFAULT_CONFIG = {
       "porLabel1":  {"x":64, "y":44, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
       "rs2a":       {"x":104,"y":44, "size":14,"bold":false,"italic":false,"color":"",       "visible":true},
       "precoInt2a": {"x":144,"y":32, "size":40,"bold":true, "italic":false,"color":"#cc0000","visible":true},
-      "centavos2a": {"x":176,"y":32, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
+      "centavos2a": {"x":176,"y":34, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "ouLabel":    {"x":68, "y":64, "size":15,"bold":false,"italic":false,"color":"#888",   "visible":true},
       "qtd3":       {"x":24, "y":76, "size":30,"bold":true, "italic":false,"color":"#cc0000","visible":true},
       "porLabel2":  {"x":64, "y":84, "size":14,"bold":true, "italic":true, "color":"",       "visible":true},
