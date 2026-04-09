@@ -222,7 +222,7 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
       </div>
     </div>
 
-    <div class="lic-tabs">
+    <div class="lic-tabs" id="lic-tabs" style="display:none">
       <button class="lic-tab active" onclick="switchTab('client')">Ativar acesso</button>
       <button class="lic-tab" onclick="switchTab('admin')">Admin</button>
     </div>
@@ -388,6 +388,12 @@ async function checkIsAdmin(uid) {
   } catch(e) {
     return false;
   }
+}
+
+/* ── MOSTRA ABA ADMIN SO COM ?admin=1 NA URL ── */
+if (new URLSearchParams(location.search).get('admin') === '1') {
+  const tabs = document.getElementById('lic-tabs');
+  if (tabs) tabs.style.display = 'flex';
 }
 
 /* ── TABS ── */
