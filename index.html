@@ -135,7 +135,9 @@ body{font-family:Arial,sans-serif;background:#e8e8e8;color:#222;font-size:14px;o
   .canvas-area{flex:1;padding-bottom:54px;overflow:auto}
   .canvas-inner{transform-origin:top left}
   .canvas-hint{display:block}
-  .inline-popup{left:12px!important;right:12px!important;top:auto!important;bottom:80px!important;min-width:0;width:auto}
+  .inline-popup{left:12px!important;right:12px!important;top:auto!important;bottom:24px!important;min-width:0;width:auto;z-index:9999}
+  .inline-popup input{font-size:18px!important;padding:14px 12px!important}
+  .inline-popup-btns button{padding:14px!important;font-size:15px!important;min-height:48px}
   /* Mobile bar botões maiores e mais fáceis de tocar */
   .mob-btn{min-width:44px;min-height:44px;padding:4px 6px}
   .mob-btn .icon{font-size:22px}
@@ -1058,9 +1060,18 @@ function buildElementoPanelHTML() {
 function buildElementoHTML() {
   if (!selTagId||!selElKey) return '<p style="color:#999;font-size:13px;padding:8px 0">Nenhum elemento selecionado.<br>Toque em um texto na etiqueta.</p>';
   const cfg = getLayout(selTagId)[selElKey];
+  const editableKeys = ['rs','rs2a','rs2b','rsOld','rsNew','porLabel1','porLabel2','ouLabel'];
+  const canEdit = !editableKeys.includes(selElKey);
   return `
     <div class="section">
       <div class="section-title">${EL_NAMES[selElKey]||selElKey}</div>
+      ${canEdit ? `
+      <button onclick="openMobileTextEdit()" style="
+        width:100%;padding:13px;margin-bottom:12px;
+        background:#0077cc;color:#fff;border:none;border-radius:8px;
+        font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;
+        display:flex;align-items:center;justify-content:center;gap:8px;
+      ">✏️ Editar texto</button>` : ''}
       <div class="grid2" style="margin-bottom:8px">
         <div class="campo"><label>Tamanho fonte</label><input type="number" id="el-size" value="${cfg.size||16}" min="6" max="120" oninput="updateElProp('size',+this.value)"></div>
         <div class="campo"><label>Cor</label><input type="color" id="el-color" value="${cfg.color||$v('cor-texto')||'#000000'}" oninput="updateElProp('color',this.value)"></div>
@@ -1535,6 +1546,14 @@ function startInlineEdit(el, tagId, key) {
 
   document.addEventListener('keydown',onKey);
   setTimeout(()=>document.addEventListener('mousedown',onOutside,true),50);
+}
+
+function openMobileTextEdit() {
+  if (!selTagId || !selElKey) return;
+  const el = document.querySelector(`.et-canvas [data-key="${selElKey}"][data-tid="${selTagId}"]`);
+  if (!el) return;
+  closeDrawer();
+  setTimeout(() => startInlineEdit(el, selTagId, selElKey), 320);
 }
 
 function commitInlineEdit(){ inlineCommit&&inlineCommit(); }
