@@ -1197,7 +1197,7 @@ function buildTagListHTML() {
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
           <input type="text" placeholder="5" value="${esc(t.precoInt2a||'')}" oninput="tags[${i}].precoInt2a=this.value;renderAll()"></div>
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-          <input type="text" placeholder=",99" value="${esc(t.centavos2a||'')}" oninput="tags[${i}].centavos2a=this.value;renderAll()"></div>
+          <input type="text" placeholder=",99" value="${esc(t.centavos2a||'')}" oninput="onCentsInput(this,${i},'centavos2a')"></div>
         </div>
         <div style="font-size:11px;color:#888;margin:4px 0 2px;font-weight:700">Linha 2 (ou...)</div>
         <div class="preco-row">
@@ -1209,7 +1209,7 @@ function buildTagListHTML() {
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
           <input type="text" placeholder="13" value="${esc(t.precoInt2b||'')}" oninput="tags[${i}].precoInt2b=this.value;renderAll()"></div>
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-          <input type="text" placeholder=",99" value="${esc(t.centavos2b||'')}" oninput="tags[${i}].centavos2b=this.value;renderAll()"></div>
+          <input type="text" placeholder=",99" value="${esc(t.centavos2b||'')}" oninput="onCentsInput(this,${i},'centavos2b')"></div>
         </div>
         `:t.modelo===3?`
         <input type="text" placeholder="Nome" value="${esc(t.nome3||'')}" oninput="tags[${i}].nome3=this.value;renderAll();refreshTagList()">
@@ -1219,14 +1219,14 @@ function buildTagListHTML() {
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor</div>
           <input type="text" placeholder="9" value="${esc(t.precoOld||'')}" oninput="tags[${i}].precoOld=this.value;renderAll()"></div>
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-          <input type="text" placeholder=",99" value="${esc(t.centsOld||'')}" oninput="tags[${i}].centsOld=this.value;renderAll()"></div>
+          <input type="text" placeholder=",99" value="${esc(t.centsOld||'')}" oninput="onCentsInput(this,${i},'centsOld')"></div>
         </div>
         <div style="font-size:11px;color:#999;margin:4px 0 2px">Novo preço</div>
         <div class="preco-row">
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor</div>
           <input type="text" placeholder="7" value="${esc(t.precoNew||'')}" oninput="tags[${i}].precoNew=this.value;renderAll()"></div>
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-          <input type="text" placeholder=",99" value="${esc(t.centsNew||'')}" oninput="tags[${i}].centsNew=this.value;renderAll()"></div>
+          <input type="text" placeholder=",99" value="${esc(t.centsNew||'')}" oninput="onCentsInput(this,${i},'centsNew')"></div>
         </div>
         <input type="text" placeholder="Unidade (CADA, KG...)" value="${esc(t.undNew||'')}" oninput="tags[${i}].undNew=this.value;renderAll()">
         `:`
@@ -1236,7 +1236,7 @@ function buildTagListHTML() {
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Valor (R$)</div>
           <input type="text" placeholder="5" value="${esc(t.precoInt||'')}" oninput="tags[${i}].precoInt=this.value;renderAll()"></div>
           <div><div style="font-size:11px;color:#999;margin-bottom:2px">Centavos</div>
-          <input type="text" placeholder=",99" value="${esc(t.centavos||'')}" oninput="tags[${i}].centavos=this.value;renderAll()"></div>
+          <input type="text" placeholder=",99" value="${esc(t.centavos||'')}" oninput="onCentsInput(this,${i},'centavos')"></div>
         </div>
         <input type="text" placeholder="Unidade (CADA, KG...)" value="${esc(t.und||'')}" oninput="tags[${i}].und=this.value;renderAll()">
         `}
@@ -1258,6 +1258,24 @@ function setTagColor(id, prop, val) {
 }
 
 function esc(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+function formatCents(val) {
+  // Remove tudo que não for dígito ou vírgula
+  let v = val.replace(/[^\d,]/g, '');
+  // Se não começa com vírgula, adiciona
+  if (v && !v.startsWith(',')) v = ',' + v;
+  // Mantém só dígitos após a vírgula
+  const parts = v.split(',');
+  v = ',' + (parts[1] || '').replace(/\D/g, '');
+  return v;
+}
+
+function onCentsInput(el, tagIdx, field) {
+  const formatted = formatCents(el.value);
+  el.value = formatted;
+  tags[tagIdx][field] = formatted;
+  renderAll();
+}
 
 function renderSidebar() {
   const sc = document.getElementById('sidebar-content');
@@ -1591,18 +1609,30 @@ function renderAll() {
   Object.entries(existing).forEach(([tid,el])=>{if(!seen.has(tid))el.remove();});
 }
 
+const CENTS_KEYS = new Set(['centavos','centavos2a','centavos2b','centsOld','centsNew']);
+
 function startInlineEdit(el, tagId, key) {
   if (['rs','rs2a','rs2b','rsOld','rsNew','porLabel1','porLabel2','ouLabel'].includes(key)) return;
   const tagIdx = tags.findIndex(t=>t.id===tagId);
   const cfg    = getLayout(tagId)[key];
   const popup  = document.getElementById('inline-popup');
   const input  = document.getElementById('inline-input');
+  const isCents = CENTS_KEYS.has(key);
 
   document.getElementById('inline-label').textContent = EL_NAMES[key]||key;
   document.getElementById('inline-hint').textContent  = isMobile() ? 'Toque OK para confirmar' : 'Enter = confirmar • Esc = cancelar';
   input.value = el.textContent;
   input.style.fontSize   = Math.min(cfg.size||16,20)+'px';
   input.style.fontWeight = cfg.bold?'700':'400';
+
+  // Handler de centavos no popup
+  function onCentsInputInline() {
+    const formatted = formatCents(input.value);
+    input.value = formatted;
+  }
+  if (isCents) {
+    input.addEventListener('input', onCentsInputInline);
+  }
 
   if (!isMobile()) {
     const rect=el.getBoundingClientRect();
@@ -1617,8 +1647,12 @@ function startInlineEdit(el, tagId, key) {
   setTimeout(()=>{ input.focus(); input.select(); },50);
 
   inlineCommit = () => {
-    if(tagIdx>=0&&FIELD_MAP[key]) tags[tagIdx][FIELD_MAP[key]]=input.value.toUpperCase();
+    let val = input.value;
+    if (isCents) val = formatCents(val);
+    else val = val.toUpperCase();
+    if(tagIdx>=0&&FIELD_MAP[key]) tags[tagIdx][FIELD_MAP[key]] = val;
     popup.style.display='none';
+    if (isCents) input.removeEventListener('input', onCentsInputInline);
     refreshTagList(); renderAll();
     inlineCommit=null; inlineCancel=null;
     document.removeEventListener('keydown', onKey);
@@ -1626,6 +1660,7 @@ function startInlineEdit(el, tagId, key) {
   };
   inlineCancel = () => {
     popup.style.display='none';
+    if (isCents) input.removeEventListener('input', onCentsInputInline);
     inlineCommit=null; inlineCancel=null;
     document.removeEventListener('keydown', onKey);
     setTimeout(()=>document.removeEventListener('mousedown',onOutside,true),0);
