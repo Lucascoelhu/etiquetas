@@ -845,10 +845,7 @@ window._serverTimestamp = serverTimestamp;
 /* ── CLIENT LOGOUT ── */
 window.clientLogout = () => {
   localStorage.removeItem('etq_session');
-  document.getElementById('c-email').value = '';
-  document.getElementById('c-token').value = '';
-  document.getElementById('c-logout-wrap').style.display = 'none';
-  document.getElementById('c-ok').textContent = '';
+  location.reload();
 };
 
 // Mostra botão "Sair" se já tem sessão salva
